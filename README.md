@@ -1,6 +1,6 @@
 # flutter_application_1
 
-dubceac v. t18 jobboard
+dubceac v. t18 jobboard.
 
 ## Getting Started
 
