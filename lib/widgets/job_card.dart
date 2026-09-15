@@ -1,3 +1,5 @@
+import 'package:blowjobboard/widgets/job_salary.dart';
+import 'package:blowjobboard/widgets/job_sched.dart';
 import 'package:flutter/material.dart';
 
 class JobCard extends StatelessWidget {
@@ -35,11 +37,11 @@ class JobCard extends StatelessWidget {
                 children: [
                   Expanded(child: Text(title)),
                   SizedBox(width: 8),
-                  Text(company),
+                  Text(company, ),
                 ],
               ),
               SizedBox(height: 8),
-              Text(salaryRange),
+              JobSalary(salaryRange: salaryRange),
               Wrap(
                 spacing: 8,
                 children: techStack
@@ -47,13 +49,7 @@ class JobCard extends StatelessWidget {
                     .toList(),
               ),
               SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.calendar_month),
-                  SizedBox(width: 8),
-                  Text(schedule),
-                ],
-              ),
+              JobSchedule(schedule: schedule)
             ],
           ),
         ),
