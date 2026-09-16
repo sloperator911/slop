@@ -110,7 +110,7 @@ class JobDetails extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (_)=>ApplicationForm(job: job))
               );
-          }, child: Text("Откликнутся")),
+          }, child: Text("Откликнуться")),
         ],
       ),
     );

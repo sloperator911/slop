@@ -55,12 +55,12 @@ class ApplicationForm extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.attach_file),
-                            Text("Выбарть файл")
+                            Text("Выбрать файл")
                           ],
                         ),
                       ),
                       SizedBox(height: 16,),
-                      Text("...и по желнию добавьте короткое сообщение работодателю"),
+                      Text("...и по желанию добавьте короткое сообщение работодателю"),
                       SizedBox(height: 16,),
                       TextFormField(
                         decoration: InputDecoration(
@@ -77,6 +77,7 @@ class ApplicationForm extends StatelessWidget {
                           ),
                         minLines: 5,
                         maxLines: 5,
+                        maxLength: 300,
                         ),
                       SizedBox(height: 16,),
                       FilledButton(
