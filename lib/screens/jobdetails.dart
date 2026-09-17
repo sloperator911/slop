@@ -105,6 +105,7 @@ class JobDetails extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 16),
           FilledButton(onPressed: () {
             context.push('/apply', extra: job);
           }, child: Text("Откликнуться")),
