@@ -3,6 +3,7 @@ import 'package:blowjobboard/screens/application_form.dart';
 import 'package:blowjobboard/screens/jobdetails.dart';
 import 'package:flutter/material.dart';
 import 'package:blowjobboard/screens/joblist.dart';
+import 'package:blowjobboard/screens/my_applications.dart';
 import 'package:blowjobboard/screens/profile.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -70,7 +71,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int selectedIndex = 0;
-  final pages = [JobListPage(), ProfilePage()];
+  final pages = [JobListPage(), MyApplicationsPage(), ProfilePage()];
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +84,10 @@ class _MyHomePageState extends State<MyHomePage> {
         currentIndex: selectedIndex,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Главная"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment_outlined),
+            label: "Мои отклики",
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: "Мой профиль",
