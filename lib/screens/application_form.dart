@@ -3,7 +3,12 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:text_scroll/text_scroll.dart';
 
-class ApplicationForm extends StatelessWidget {
+const cvType = XTypeGroup(
+  label: "PDF",
+  extensions: ["pdf"]
+);
+
+class ApplicationForm extends StatefulWidget {
   const ApplicationForm({
     super.key,
     
@@ -11,6 +16,16 @@ class ApplicationForm extends StatelessWidget {
     });
 
     final JobPost job;
+
+  @override
+  State<ApplicationForm> createState() => _ApplicationFormState();
+}
+
+class _ApplicationFormState extends State<ApplicationForm> {
+
+    final formKey = GlobalKey<FormState>();
+    XFile? selectedCv;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,7 +34,7 @@ class ApplicationForm extends StatelessWidget {
           children: [
             Expanded(
               child: TextScroll(
-                job.title,
+                widget.job.title,
                 mode: TextScrollMode.endless,
                 pauseBetween: Duration(seconds: 1),
                 ),
@@ -36,11 +51,12 @@ class ApplicationForm extends StatelessWidget {
             child: 
               Padding(padding: const EdgeInsets.all(16),
                 child: Form(
+                  key: formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "${job.title} : ${job.company}",
+                        "${widget.job.title} @ ${widget.job.company}",
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       SizedBox(height: 8,),
@@ -48,21 +64,40 @@ class ApplicationForm extends StatelessWidget {
                       SizedBox(height: 8,),
                       OutlinedButton(
                         onPressed: () async {
-                          final file = await openFile();
-                          print("*****************${file?.name}");
+                          final file = await openFile(acceptedTypeGroups: [cvType]);
+                          if (file == null) return;
+                          
+                          setState(() {
+                            selectedCv = file;
+                          });
+
+                          print("*****************${file.name}");
                         },
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.attach_file),
-                            Text("Выбрать файл")
+                            Flexible(
+                              child: 
+                              Text(
+                              selectedCv?.name ?? "Выбрать файл",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       SizedBox(height: 16,),
-                      Text("...и по желанию добавьте короткое сообщение работодателю"),
+                      Text("...и добавьте короткое сообщение работодателю"),
                       SizedBox(height: 16,),
                       TextFormField(
+                        validator: (value) {
+                          if (value == null || value.trim().length < 10){
+                            return 'Минимум 10 символов';
+                          }
+                          return null;
+                        },
                         decoration: InputDecoration(
                           hint: Opacity(
                             opacity: 0.5,
@@ -81,7 +116,16 @@ class ApplicationForm extends StatelessWidget {
                         ),
                       SizedBox(height: 16,),
                       FilledButton(
-                        onPressed: (){},
+                        onPressed: (){
+                          if (selectedCv == null){
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("CV не выбран")));
+                            return;
+                          }
+                      
+                          if (!formKey.currentState!.validate()){
+                            return;
+                          }
+                        },
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
