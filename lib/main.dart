@@ -1,24 +1,46 @@
+import 'package:blowjobboard/data/mog_data.dart';
+import 'package:blowjobboard/screens/application_form.dart';
+import 'package:blowjobboard/screens/jobdetails.dart';
 import 'package:flutter/material.dart';
 import 'package:blowjobboard/screens/joblist.dart';
 import 'package:blowjobboard/screens/profile.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   runApp(const MyApp());
 }
+
+final router = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const MyHomePage(title: 'BlowJobBoard'),
+      ),
+    GoRoute(
+      path: '/job',
+      builder: (context, state) => JobDetails(job: state.extra! as JobPost),
+      ),
+    GoRoute(
+      path: '/apply',
+      builder:(context, state) => ApplicationForm(job: state.extra! as JobPost),
+      )
+  ]
+  );
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'blowjobboard',
+      routerConfig: router,
       theme: ThemeData(
         colorScheme: .fromSeed(
           seedColor: const Color.fromARGB(255, 127, 61, 61),
         ),
       ),
-      home: const MyHomePage(title: 'BlowJobBoard'),
+
     );
   }
 }

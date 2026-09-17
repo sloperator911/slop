@@ -1,8 +1,8 @@
 import 'package:blowjobboard/data/mog_data.dart';
-import 'package:blowjobboard/screens/application_form.dart';
 import 'package:blowjobboard/widgets/job_salary.dart';
 import 'package:blowjobboard/widgets/job_sched.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:text_scroll/text_scroll.dart';
 
 class JobDetails extends StatelessWidget {
@@ -106,10 +106,7 @@ class JobDetails extends StatelessWidget {
             ),
           ),
           FilledButton(onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_)=>ApplicationForm(job: job))
-              );
+            context.push('/apply', extra: job);
           }, child: Text("Откликнуться")),
         ],
       ),

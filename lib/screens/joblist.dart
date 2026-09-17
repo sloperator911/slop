@@ -1,7 +1,7 @@
-import 'package:blowjobboard/screens/jobdetails.dart';
 import 'package:flutter/material.dart';
 import 'package:blowjobboard/widgets/job_card.dart';
 import 'package:blowjobboard/data/mog_data.dart';
+import 'package:go_router/go_router.dart';
 
 class JobListPage extends StatelessWidget {
   const new({super.key});
@@ -17,10 +17,7 @@ class JobListPage extends StatelessWidget {
         techStack: job.techStack,
         schedule: job.schedule,
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_)=>JobDetails(job: job))
-            );
+          context.push('/job', extra: job);
         },
       ),
       ).toList()
