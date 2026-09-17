@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:blowjobboard/widgets/job_card.dart';
-import 'package:blowjobboard/data/mog_data.dart';
+import 'package:blowjobboard/data/mock_repository.dart';
 import 'package:go_router/go_router.dart';
 
 class JobListPage extends StatelessWidget {
@@ -10,7 +10,7 @@ class JobListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: EdgeInsets.all(8),
-      children: mockJobs.map((job) => JobCard(
+      children: mockRepository.jobs.map((job) => JobCard(
         title: job.title,
         company: job.company,
         salaryRange: job.salaryRange,
