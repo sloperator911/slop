@@ -1,0 +1,7 @@
+# Pinned to versions that run on Python 3.9 (the oldest interpreter the
+# course supports). `pip install -r requirements.txt` once, then start with
+# `python3 -m app.main`.
+fastapi==0.115.12
+uvicorn==0.30.6
+PyJWT==2.9.0
+bcrypt==4.2.1

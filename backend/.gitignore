@@ -1,0 +1,9 @@
+# Python tooling
+.venv/
+__pycache__/
+*.pyc
+
+# Runtime data (created automatically on first start)
+app.db
+app.db-*
+uploads/
