@@ -6,6 +6,23 @@ class MockRepository {
 
   List<JobPost> get jobs => List.unmodifiable(_jobs);
   List<Application> get applications => List.unmodifiable(_applications);
+
+  void addApplication({
+    required int jobPostId,
+    required String cvName,
+    required String message,
+  }) {
+    final nextId = _applications.isEmpty ? 1 : _applications.last.id + 1;
+
+    _applications.add(Application(
+      id: nextId,
+      jobPostId: jobPostId,
+      userId: 1,
+      cvUrl: cvName,
+      message: message,
+      status: 'Отправлен',
+    ));
+  }
 }
 
 final mockRepository = MockRepository();

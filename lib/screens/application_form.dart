@@ -1,6 +1,8 @@
 import 'package:blowjobboard/data/mog_data.dart';
+import 'package:blowjobboard/data/mock_repository.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:text_scroll/text_scroll.dart';
 
 const cvType = XTypeGroup(
@@ -25,6 +27,7 @@ class _ApplicationFormState extends State<ApplicationForm> {
 
     final formKey = GlobalKey<FormState>();
     XFile? selectedCv;
+    String message = '';
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +95,9 @@ class _ApplicationFormState extends State<ApplicationForm> {
                       Text("...и добавьте короткое сообщение работодателю"),
                       SizedBox(height: 16,),
                       TextFormField(
+                        onChanged: (value) {
+                          message = value;
+                        },
                         validator: (value) {
                           if (value == null || value.trim().length < 10){
                             return 'Минимум 10 символов';
@@ -117,7 +123,8 @@ class _ApplicationFormState extends State<ApplicationForm> {
                       SizedBox(height: 16,),
                       FilledButton(
                         onPressed: (){
-                          if (selectedCv == null){
+                          final cv = selectedCv;
+                          if (cv == null){
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("CV не выбран")));
                             return;
                           }
@@ -125,6 +132,18 @@ class _ApplicationFormState extends State<ApplicationForm> {
                           if (!formKey.currentState!.validate()){
                             return;
                           }
+
+                          mockRepository.addApplication(
+                            jobPostId: widget.job.id,
+                            cvName: cv.name,
+                            message: message.trim(),
+                          );
+
+                          final messenger = ScaffoldMessenger.of(context);
+                          context.pop();
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text('Отклик отправлен')),
+                          );
                         },
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
