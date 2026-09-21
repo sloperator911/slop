@@ -1,5 +1,6 @@
 import 'package:blowjobboard/data/mog_data.dart';
 import 'package:blowjobboard/screens/application_form.dart';
+import 'package:blowjobboard/screens/auth.dart';
 import 'package:blowjobboard/screens/jobdetails.dart';
 import 'package:flutter/material.dart';
 import 'package:blowjobboard/screens/joblist.dart';
@@ -13,8 +14,12 @@ void main() {
 }
 
 final router = GoRouter(
-  initialLocation: '/jobs',
+  initialLocation: '/login',
   routes: [
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginPage(),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           MainShell(navigationShell: navigationShell),
