@@ -61,7 +61,7 @@ class _JobListPageState extends State<JobListPage> {
             techStack: job.techStack,
             schedule: job.schedule,
             onTap: () {
-              context.push('/job', extra: job);
+              context.push('/jobs/${job.id}');
             },
           ),
         if (filteredJobs.isEmpty)

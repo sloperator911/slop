@@ -1,4 +1,3 @@
-import 'package:blowjobboard/data/mog_data.dart';
 import 'package:blowjobboard/screens/application_form.dart';
 import 'package:blowjobboard/screens/auth.dart';
 import 'package:blowjobboard/screens/jobdetails.dart';
@@ -19,6 +18,20 @@ final router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginPage(),
+    ),
+    GoRoute(
+      path: '/jobs/:id',
+      builder: (context, state) => JobDetails(
+        jobId: int.tryParse(state.pathParameters['id']!) ?? -1,
+      ),
+      routes: [
+        GoRoute(
+          path: 'apply',
+          builder: (context, state) => ApplicationForm(
+            jobId: int.tryParse(state.pathParameters['id']!) ?? -1,
+          ),
+        ),
+      ],
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
@@ -49,15 +62,6 @@ final router = GoRouter(
           ],
         ),
       ],
-    ),
-    GoRoute(
-      path: '/job',
-      builder: (context, state) => JobDetails(job: state.extra! as JobPost),
-    ),
-    GoRoute(
-      path: '/apply',
-      builder: (context, state) =>
-          ApplicationForm(job: state.extra! as JobPost),
     ),
   ],
 );

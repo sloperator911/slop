@@ -20,7 +20,9 @@ class MyApplicationsPage extends StatelessWidget {
         for (final application in applications)
           Card(
             child: InkWell(
-              onTap: jobs.containsKey(application.jobPostId)? () => context.push('/job', extra: jobs[application.jobPostId],): null,
+              onTap: jobs.containsKey(application.jobPostId)
+                  ? () => context.push('/jobs/${application.jobPostId}')
+                  : null,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(

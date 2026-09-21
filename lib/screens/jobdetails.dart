@@ -1,4 +1,4 @@
-import 'package:blowjobboard/data/mog_data.dart';
+import 'package:blowjobboard/data/mock_repository.dart';
 import 'package:blowjobboard/widgets/job_salary.dart';
 import 'package:blowjobboard/widgets/job_sched.dart';
 import 'package:flutter/material.dart';
@@ -6,12 +6,20 @@ import 'package:go_router/go_router.dart';
 import 'package:text_scroll/text_scroll.dart';
 
 class JobDetails extends StatelessWidget {
-  final JobPost job;
+  final int jobId;
 
-  const JobDetails({super.key, required this.job});
+  const JobDetails({super.key, required this.jobId});
 
   @override
   Widget build(BuildContext context) {
+    final job = mockRepository.jobById(jobId);
+
+    if (job == null) {
+      return const Scaffold(
+        body: Center(child: Text('Вакансия не найдена')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -107,7 +115,7 @@ class JobDetails extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           FilledButton(onPressed: () {
-            context.push('/apply', extra: job);
+            context.push('/jobs/${job.id}/apply');
           }, child: Text("Откликнуться")),
         ],
       ),

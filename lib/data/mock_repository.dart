@@ -7,6 +7,13 @@ class MockRepository {
   List<JobPost> get jobs => List.unmodifiable(_jobs);
   List<Application> get applications => List.unmodifiable(_applications);
 
+  JobPost? jobById(int id) {
+    for (final job in _jobs) {
+      if (job.id == id) return job;
+    }
+    return null;
+  }
+
   void addApplication({
     required int jobPostId,
     required String cvName,

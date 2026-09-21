@@ -1,4 +1,3 @@
-import 'package:blowjobboard/data/mog_data.dart';
 import 'package:blowjobboard/data/mock_repository.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -14,10 +13,10 @@ class ApplicationForm extends StatefulWidget {
   const ApplicationForm({
     super.key,
     
-    required this.job
+    required this.jobId
     });
 
-    final JobPost job;
+    final int jobId;
 
   @override
   State<ApplicationForm> createState() => _ApplicationFormState();
@@ -31,13 +30,21 @@ class _ApplicationFormState extends State<ApplicationForm> {
 
   @override
   Widget build(BuildContext context) {
+    final job = mockRepository.jobById(widget.jobId);
+
+    if (job == null) {
+      return const Scaffold(
+        body: Center(child: Text('Вакансия не найдена')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
             Expanded(
               child: TextScroll(
-                widget.job.title,
+                job.title,
                 mode: TextScrollMode.endless,
                 pauseBetween: Duration(seconds: 1),
                 ),
@@ -59,7 +66,7 @@ class _ApplicationFormState extends State<ApplicationForm> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "${widget.job.title} @ ${widget.job.company}",
+                        "${job.title} @ ${job.company}",
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       SizedBox(height: 8,),
@@ -134,7 +141,7 @@ class _ApplicationFormState extends State<ApplicationForm> {
                           }
 
                           mockRepository.addApplication(
-                            jobPostId: widget.job.id,
+                            jobPostId: job.id,
                             cvName: cv.name,
                             message: message.trim(),
                           );
