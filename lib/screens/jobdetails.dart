@@ -1,8 +1,9 @@
-import 'package:blowjobboard/data/mock_repository.dart';
+import 'package:blowjobboard/models/jobs_model.dart';
 import 'package:blowjobboard/widgets/job_salary.dart';
 import 'package:blowjobboard/widgets/job_sched.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:text_scroll/text_scroll.dart';
 
 class JobDetails extends StatelessWidget {
@@ -12,12 +13,10 @@ class JobDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final job = mockRepository.jobById(jobId);
+    final job = context.watch<JobsModel>().jobById(jobId);
 
     if (job == null) {
-      return const Scaffold(
-        body: Center(child: Text('Вакансия не найдена')),
-      );
+      return const Scaffold(body: Center(child: Text('Вакансия не найдена')));
     }
 
     return Scaffold(
@@ -114,9 +113,12 @@ class JobDetails extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          FilledButton(onPressed: () {
-            context.push('/jobs/${job.id}/apply');
-          }, child: Text("Откликнуться")),
+          FilledButton(
+            onPressed: () {
+              context.push('/jobs/${job.id}/apply');
+            },
+            child: Text("Откликнуться"),
+          ),
         ],
       ),
     );

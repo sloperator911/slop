@@ -1,9 +1,24 @@
+import 'package:blowjobboard/data/job_repository.dart';
+import 'package:blowjobboard/data/mock_repository.dart';
+import 'package:blowjobboard/models/jobs_model.dart';
 import 'package:blowjobboard/router.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider<JobRepository>.value(value: mockRepository),
+        ChangeNotifierProvider(
+          create: (context) =>
+              JobsModel(context.read<JobRepository>())..loadJobs(),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
