@@ -1,7 +1,9 @@
+import 'package:blowjobboard/data/error_simulation.dart';
 import 'package:blowjobboard/data/job_repository.dart';
 import 'package:blowjobboard/data/mock_repository.dart';
 import 'package:blowjobboard/models/applications_model.dart';
 import 'package:blowjobboard/models/jobs_model.dart';
+import 'package:blowjobboard/models/network_settings_model.dart';
 import 'package:blowjobboard/router.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -14,6 +16,7 @@ void main() {
     MultiProvider(
       providers: [
         Provider<JobRepository>.value(value: repository),
+        Provider<ErrorSimulation>.value(value: repository),
         ChangeNotifierProvider(
           create: (context) =>
               JobsModel(context.read<JobRepository>())..loadJobs(),
@@ -22,6 +25,10 @@ void main() {
           create: (context) =>
               ApplicationsModel(context.read<JobRepository>())
                 ..loadApplications(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) =>
+              NetworkSettingsModel(context.read<ErrorSimulation>()),
         ),
       ],
       child: const MyApp(),

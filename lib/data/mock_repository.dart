@@ -1,11 +1,13 @@
+import 'error_simulation.dart';
 import 'job_repository.dart';
 import 'mog_data.dart';
 import 'result.dart';
 
-class MockRepository implements JobRepository {
+class MockRepository implements JobRepository, ErrorSimulation {
   final List<JobPost> _jobs = List.of(mockJobs);
   final List<Application> _applications = List.of(mockApplications);
 
+  @override
   bool simulateError = false;
 
   @override

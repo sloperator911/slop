@@ -1,11 +1,17 @@
+import 'package:blowjobboard/models/applications_model.dart';
+import 'package:blowjobboard/models/jobs_model.dart';
+import 'package:blowjobboard/models/network_settings_model.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final networkSettings = context.watch<NetworkSettingsModel>();
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -23,6 +29,21 @@ class ProfilePage extends StatelessWidget {
                 Text('alex@example.com'),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: SwitchListTile(
+            title: const Text('Симулировать сбой сети'),
+            value: networkSettings.simulateError,
+            onChanged: (value) {
+              networkSettings.setSimulateError(value);
+
+              if (value) {
+                context.read<JobsModel>().loadJobs();
+                context.read<ApplicationsModel>().loadApplications();
+              }
+            },
           ),
         ),
         const SizedBox(height: 16),
