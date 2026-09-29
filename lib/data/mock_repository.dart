@@ -8,9 +8,6 @@ class MockRepository implements JobRepository {
 
   bool simulateError = false;
 
-  List<JobPost> get jobs => List.unmodifiable(_jobs);
-  List<Application> get applications => List.unmodifiable(_applications);
-
   @override
   Future<Result<List<JobPost>>> getJobs() async {
     await Future.delayed(const Duration(milliseconds: 700));
@@ -31,13 +28,6 @@ class MockRepository implements JobRepository {
     }
 
     return Ok(List.unmodifiable(_applications));
-  }
-
-  JobPost? jobById(int id) {
-    for (final job in _jobs) {
-      if (job.id == id) return job;
-    }
-    return null;
   }
 
   @override
@@ -66,5 +56,3 @@ class MockRepository implements JobRepository {
     return Ok(application);
   }
 }
-
-final mockRepository = MockRepository();
