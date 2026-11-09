@@ -13,19 +13,20 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy.orm import Session
 
 from .auth import require_auth
-from .db import BASE_DIR, conn, now_iso
+from .db import BASE_DIR, get_db
 from .errors import json_response, not_found, validation_error
+from .models import UploadedFile
 
 # Upload size cap: 5 MB — plenty for lab photos. Documented in
 # ../openapi.yaml at POST /files. Over the cap -> 400 VALIDATION_ERROR
 # (the contract deliberately has no 413).
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
-# Created on first import (= first start), next to app.db.
+# Created during application startup, next to app.db.
 UPLOADS_DIR = BASE_DIR / "uploads"
-UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter()
 
@@ -36,9 +37,7 @@ def _too_large():
     )
 
 
-@router.post("/files")
-async def upload_file(request: Request, user_id: int = Depends(require_auth)):
-    """POST /files (multipart, field "file") -> 201 {id, url, name, size, mimeType}"""
+async def _read_file(request: Request, user_id: int = Depends(require_auth)):
     # Cheap early rejection when the client declares the size upfront.
     # Not sufficient on its own: Content-Length can be absent (chunked
     # encoding) or lie, so the bytes are counted again while reading.
@@ -76,35 +75,47 @@ async def upload_file(request: Request, user_id: int = Depends(require_auth)):
 
         name = params.get("filename") or "file"
         mime_type = headers.get("content-type", "application/octet-stream")
-
-        # Store under a unique name: no collisions, no path tricks.
-        safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
-        stored_path = UPLOADS_DIR / ("%d_%s" % (time.time_ns() // 1000, safe_name))
-        stored_path.write_bytes(content)
-
-        cursor = conn.execute(
-            "INSERT INTO files (user_id, name, mime_type, size, path, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (user_id, name, mime_type, len(content), str(stored_path), now_iso()),
-        )
-        file_id = cursor.lastrowid
-
-        return json_response(
-            {
-                "id": file_id,
-                "url": "/files/%d" % file_id,
-                "name": name,
-                "size": len(content),
-                "mimeType": mime_type,
-            },
-            status=201,
-        )
+        return name, mime_type, content
 
     raise validation_error("Missing multipart field 'file'")
 
 
+@router.post("/files")
+def upload_file(
+    data: Tuple[str, str, bytes] = Depends(_read_file),
+    user_id: int = Depends(require_auth),
+    db: Session = Depends(get_db),
+):
+    """POST /files (multipart, field "file") -> 201 {id, url, name, size, mimeType}"""
+    name, mime_type, content = data
+    safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+    stored_path = UPLOADS_DIR / ("%d_%s" % (time.time_ns() // 1000, safe_name))
+    stored_path.write_bytes(content)
+
+    file = UploadedFile(
+        user_id=user_id,
+        name=name,
+        mime_type=mime_type,
+        size=len(content),
+        path=str(stored_path),
+    )
+    db.add(file)
+    db.commit()
+
+    return json_response(
+        {
+            "id": file.id,
+            "url": "/files/%d" % file.id,
+            "name": name,
+            "size": len(content),
+            "mimeType": mime_type,
+        },
+        status=201,
+    )
+
+
 @router.get("/files/{file_id}")
-async def download_file(file_id: str):
+def download_file(file_id: str, db: Session = Depends(get_db)):
     """GET /files/{id} -> the stored bytes with their original Content-Type | 404
 
     Public on purpose: lets a Flutter app show images by plain URL.
@@ -114,13 +125,13 @@ async def download_file(file_id: str):
     except ValueError:
         raise not_found("File not found")
 
-    row = conn.execute(
-        "SELECT * FROM files WHERE id = ?", (parsed_id,)
-    ).fetchone()
-    if row is None:
+    if not 0 < parsed_id < 2**63:
+        raise not_found("File not found")
+    file = db.get(UploadedFile, parsed_id)
+    if file is None:
         raise not_found("File not found")
 
-    stored = Path(row["path"])
+    stored = Path(file.path)
     if not stored.exists():
         raise not_found("File not found")
 
@@ -130,7 +141,7 @@ async def download_file(file_id: str):
             # Set Content-Type via headers, not media_type: Starlette would
             # append "; charset=utf-8" to text/* types, and the contract
             # promises the Content-Type byte-for-byte as uploaded.
-            "Content-Type": row["mime_type"],
+            "Content-Type": file.mime_type,
             # The stored Content-Type is client-supplied; nosniff stops
             # browsers from second-guessing it into something executable.
             "X-Content-Type-Options": "nosniff",

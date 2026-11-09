@@ -7,16 +7,14 @@ from typing import Optional
 import bcrypt
 import jwt  # PyJWT
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from .db import conn, now_iso
-from .errors import (
-    email_taken,
-    json_response,
-    read_json_body,
-    string_field,
-    unauthorized,
-    validation_error,
-)
+from .db import get_db
+from .errors import email_taken, json_response, unauthorized
+from .models import User
+from .schemas import LoginBody, RegisterBody
 
 # Secret used to sign JWTs. Override with the JWT_SECRET env variable.
 JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-me")
@@ -24,6 +22,11 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-me")
 TOKEN_LIFETIME_SECONDS = 7 * 24 * 60 * 60  # 7 days
 
 router = APIRouter()
+
+
+def _to_json(user: User) -> dict:
+    return {"id": user.id, "email": user.email, "name": user.name}
+
 
 # ---------------------------------------------------------------------------
 # JWT (HS256). PyJWT does the encoding/signing; the shape matches the
@@ -55,7 +58,7 @@ def verify_token(token: str) -> Optional[int]:
         return None
 
 
-async def require_auth(request: Request) -> int:
+def require_auth(request: Request) -> int:
     """FastAPI dependency: the id of the logged-in user, or 401.
 
     Use it on any protected route:  user_id: int = Depends(require_auth)
@@ -96,82 +99,55 @@ def verify_password(password: str, stored_hash: str) -> bool:
 
 
 @router.post("/auth/register")
-async def register(request: Request):
+def register(body: RegisterBody, db: Session = Depends(get_db)):
     """POST /auth/register  {email, password, name} -> 201 {token, user}"""
-    body = await read_json_body(request)
-    if body is None:
-        raise validation_error("Body must be a JSON object")
-
-    email = string_field(body, "email")
-    password = string_field(body, "password")
-    name = string_field(body, "name")
-    if email is None or "@" not in email:
-        raise validation_error("A valid email is required")
-    if password is None:
-        raise validation_error("password is required")
-    if name is None:
-        raise validation_error("name is required")
-
-    existing = conn.execute(
-        "SELECT id FROM users WHERE email = ?", (email,)
-    ).fetchone()
+    existing = db.scalar(select(User.id).where(User.email == body.email))
     if existing is not None:
         raise email_taken()
 
-    cursor = conn.execute(
-        "INSERT INTO users (email, password_hash, name, created_at) "
-        "VALUES (?, ?, ?, ?)",
-        (email, hash_password(password), name, now_iso()),
+    user = User(
+        email=body.email,
+        password_hash=hash_password(body.password),
+        name=body.name,
     )
-    user_id = cursor.lastrowid
+    db.add(user)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise email_taken()
 
     return json_response(
         {
-            "token": issue_token(user_id),
-            "user": {"id": user_id, "email": email, "name": name},
+            "token": issue_token(user.id),
+            "user": _to_json(user),
         },
         status=201,
     )
 
 
 @router.post("/auth/login")
-async def login(request: Request):
+def login(body: LoginBody, db: Session = Depends(get_db)):
     """POST /auth/login  {email, password} -> 200 {token, user}"""
-    body = await read_json_body(request)
-    email = None if body is None else string_field(body, "email")
-    password = None if body is None else string_field(body, "password")
-    if email is None or password is None:
-        raise unauthorized("Invalid email or password")
-
-    user = conn.execute(
-        "SELECT * FROM users WHERE email = ?", (email,)
-    ).fetchone()
+    user = db.scalar(select(User).where(User.email == body.email))
     if user is None:
         raise unauthorized("Invalid email or password")
 
-    if not verify_password(password, user["password_hash"]):
+    if not verify_password(body.password, user.password_hash):
         raise unauthorized("Invalid email or password")
 
     return json_response(
         {
-            "token": issue_token(user["id"]),
-            "user": {
-                "id": user["id"],
-                "email": user["email"],
-                "name": user["name"],
-            },
+            "token": issue_token(user.id),
+            "user": _to_json(user),
         }
     )
 
 
 @router.get("/me")
-async def me(user_id: int = Depends(require_auth)):
+def me(user_id: int = Depends(require_auth), db: Session = Depends(get_db)):
     """GET /me  (Bearer) -> 200 {id, email, name}"""
-    user = conn.execute(
-        "SELECT id, email, name FROM users WHERE id = ?", (user_id,)
-    ).fetchone()
+    user = db.get(User, user_id)
     if user is None:
         raise unauthorized()
-    return json_response(
-        {"id": user["id"], "email": user["email"], "name": user["name"]}
-    )
+    return json_response(_to_json(user))

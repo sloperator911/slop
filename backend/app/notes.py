@@ -1,42 +1,37 @@
 # Notes: the example CRUD entity, scoped per user.
-#
-# THIS FILE IS THE TEMPLATE FOR YOUR OWN ENTITIES.
-# To add e.g. "recipes": copy this file to recipes.py, rename the table
-# and the fields, add a CREATE TABLE in db.py, include the new router in
-# main.py. That's the whole recipe.
 
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session
 
 from .auth import require_auth
-from .db import conn, now_iso
-from .errors import json_response, not_found, read_json_body, string_field, validation_error
+from .db import get_db
+from .errors import json_response, not_found, validation_error
+from .models import Note
+from .schemas import NoteBody
 
 router = APIRouter()
 
 
-def _to_json(row) -> dict:
+def _to_json(note: Note) -> dict:
     return {
-        "id": row["id"],
-        "title": row["title"],
-        "content": row["content"],
-        "createdAt": row["created_at"],
+        "id": note.id,
+        "title": note.title,
+        "content": note.content,
+        "createdAt": note.created_at,
     }
 
 
-def _find(user_id: int, id_param: str):
-    """Finds a note by id, but only among the current user's notes.
-
-    Someone else's note is indistinguishable from a missing one (404).
-    """
+def _find(db: Session, user_id: int, id_param: str):
     try:
         note_id = int(id_param)
     except (TypeError, ValueError):
         return None
-    return conn.execute(
-        "SELECT * FROM notes WHERE id = ? AND user_id = ?", (note_id, user_id)
-    ).fetchone()
+    if not 0 < note_id < 2**63:
+        return None
+    return db.scalar(select(Note).where(Note.id == note_id, Note.user_id == user_id))
 
 
 def _int_or(value: Optional[str], default: int) -> int:
@@ -47,29 +42,33 @@ def _int_or(value: Optional[str], default: int) -> int:
 
 
 @router.get("/notes")
-async def list_notes(request: Request, user_id: int = Depends(require_auth)):
-    """GET /notes?page=1&limit=20&search=  -> {items, page, limit, total}"""
+def list_notes(
+    request: Request, user_id: int = Depends(require_auth), db: Session = Depends(get_db)
+):
     query = request.query_params
     page = max(_int_or(query.get("page"), 1), 1)
     limit = min(max(_int_or(query.get("limit"), 20), 1), 100)
-    search = query.get("search", "")
+    offset = (page - 1) * limit
+    if offset >= 2**63:
+        raise validation_error("page is too large")
+    search = "%" + query.get("search", "") + "%"
 
-    where = "user_id = ? AND (title LIKE ? OR content LIKE ?)"
-    # %/_ in the search term act as LIKE wildcards (parameterized, so safe —
-    # purely a semantic quirk).
-    args = (user_id, "%" + search + "%", "%" + search + "%")
-
-    total = conn.execute(
-        "SELECT COUNT(*) AS n FROM notes WHERE " + where, args
-    ).fetchone()["n"]
-    rows = conn.execute(
-        "SELECT * FROM notes WHERE " + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
-        args + (limit, (page - 1) * limit),
-    ).fetchall()
+    conditions = [
+        Note.user_id == user_id,
+        or_(Note.title.like(search), Note.content.like(search)),
+    ]
+    total = db.scalar(select(func.count()).select_from(Note).where(*conditions))
+    notes = db.scalars(
+        select(Note)
+        .where(*conditions)
+        .order_by(Note.id.desc())
+        .limit(limit)
+        .offset(offset)
+    ).all()
 
     return json_response(
         {
-            "items": [_to_json(row) for row in rows],
+            "items": [_to_json(note) for note in notes],
             "page": page,
             "limit": limit,
             "total": total,
@@ -78,64 +77,49 @@ async def list_notes(request: Request, user_id: int = Depends(require_auth)):
 
 
 @router.post("/notes")
-async def create_note(request: Request, user_id: int = Depends(require_auth)):
-    """POST /notes  {title, content} -> 201 note"""
-    body = await read_json_body(request)
-    if body is None:
-        raise validation_error("Body must be a JSON object")
-    title = string_field(body, "title")
-    if title is None:
-        raise validation_error("title is required")
-    content = body["content"] if isinstance(body.get("content"), str) else ""
-
-    cursor = conn.execute(
-        "INSERT INTO notes (user_id, title, content, created_at) "
-        "VALUES (?, ?, ?, ?)",
-        (user_id, title, content, now_iso()),
-    )
-    row = _find(user_id, str(cursor.lastrowid))
-    return json_response(_to_json(row), status=201)
+def create_note(
+    body: NoteBody, user_id: int = Depends(require_auth), db: Session = Depends(get_db)
+):
+    note = Note(user_id=user_id, **body.model_dump())
+    db.add(note)
+    db.commit()
+    return json_response(_to_json(note), status=201)
 
 
 @router.get("/notes/{note_id}")
-async def get_note(note_id: str, user_id: int = Depends(require_auth)):
-    """GET /notes/{id} -> 200 note | 404"""
-    row = _find(user_id, note_id)
-    if row is None:
+def get_note(
+    note_id: str, user_id: int = Depends(require_auth), db: Session = Depends(get_db)
+):
+    note = _find(db, user_id, note_id)
+    if note is None:
         raise not_found("Note not found")
-    return json_response(_to_json(row))
+    return json_response(_to_json(note))
 
 
 @router.put("/notes/{note_id}")
-async def update_note(
-    note_id: str, request: Request, user_id: int = Depends(require_auth)
+def update_note(
+    note_id: str,
+    body: NoteBody,
+    user_id: int = Depends(require_auth),
+    db: Session = Depends(get_db),
 ):
-    """PUT /notes/{id}  {title, content} -> 200 updated note | 404"""
-    row = _find(user_id, note_id)
-    if row is None:
+    note = _find(db, user_id, note_id)
+    if note is None:
         raise not_found("Note not found")
 
-    body = await read_json_body(request)
-    if body is None:
-        raise validation_error("Body must be a JSON object")
-    title = string_field(body, "title")
-    if title is None:
-        raise validation_error("title is required")
-    content = body["content"] if isinstance(body.get("content"), str) else ""
-
-    conn.execute(
-        "UPDATE notes SET title = ?, content = ? WHERE id = ?",
-        (title, content, row["id"]),
-    )
-    updated = _find(user_id, str(row["id"]))
-    return json_response(_to_json(updated))
+    note.title = body.title
+    note.content = body.content
+    db.commit()
+    return json_response(_to_json(note))
 
 
 @router.delete("/notes/{note_id}")
-async def delete_note(note_id: str, user_id: int = Depends(require_auth)):
-    """DELETE /notes/{id} -> 204 | 404"""
-    row = _find(user_id, note_id)
-    if row is None:
+def delete_note(
+    note_id: str, user_id: int = Depends(require_auth), db: Session = Depends(get_db)
+):
+    note = _find(db, user_id, note_id)
+    if note is None:
         raise not_found("Note not found")
-    conn.execute("DELETE FROM notes WHERE id = ?", (row["id"],))
-    return Response(status_code=204)  # 204 = success with no body
+    db.delete(note)
+    db.commit()
+    return Response(status_code=204)
