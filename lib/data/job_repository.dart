@@ -1,4 +1,5 @@
-import 'mog_data.dart';
+import 'application.dart';
+import 'job_post.dart';
 import 'result.dart';
 
 abstract interface class JobRepository {

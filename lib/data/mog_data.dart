@@ -1,42 +1,5 @@
-class JobPost {
-  final int id;
-  final String title;
-  final String company;
-  final String salaryRange;
-  final List<String> techStack;
-  final String schedule;
-  final String requirements;
-  final String description;
-
-  const JobPost({
-    required this.id,
-    required this.title,
-    required this.company,
-    required this.salaryRange,
-    required this.techStack,
-    required this.schedule,
-    required this.requirements,
-    required this.description,
-  });
-}
-
-class Application {
-  final int id;
-  final int jobPostId;
-  final int userId;
-  final String cvUrl;
-  final String message;
-  final String status;
-
-  const Application({
-    required this.id,
-    required this.jobPostId,
-    required this.userId,
-    required this.cvUrl,
-    required this.message,
-    required this.status,
-  });
-}
+import 'application.dart';
+import 'job_post.dart';
 
 const mockJobs = [
   JobPost(

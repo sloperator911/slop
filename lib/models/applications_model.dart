@@ -1,5 +1,5 @@
+import 'package:blowjobboard/data/application.dart';
 import 'package:blowjobboard/data/job_repository.dart';
-import 'package:blowjobboard/data/mog_data.dart';
 import 'package:blowjobboard/data/result.dart';
 import 'package:flutter/foundation.dart';
 

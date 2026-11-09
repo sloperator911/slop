@@ -1,4 +1,6 @@
+import 'application.dart';
 import 'error_simulation.dart';
+import 'job_post.dart';
 import 'job_repository.dart';
 import 'mog_data.dart';
 import 'result.dart';
