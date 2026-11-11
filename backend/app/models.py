@@ -1,5 +1,5 @@
-from sqlalchemy import JSON, Boolean, ForeignKey, Text, false
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, Boolean, ForeignKey, Text, UniqueConstraint, false
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base, now_iso
 
@@ -52,3 +52,21 @@ class JobPost(Base):
     requirements: Mapped[str] = mapped_column(Text, default="", server_default="")
     description: Mapped[str] = mapped_column(Text, default="", server_default="")
     deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+
+
+class Application(Base):
+    __tablename__ = "applications"
+    __table_args__ = (
+        UniqueConstraint("user_id", "job_post_id"),
+        {"sqlite_autoincrement": True},
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_post_id: Mapped[int] = mapped_column(ForeignKey("job_posts.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    cv_url: Mapped[str] = mapped_column(Text)
+    message: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(
+        Text, default="Отправлен", server_default="Отправлен"
+    )
+    job_post: Mapped[JobPost] = relationship(lazy="joined")

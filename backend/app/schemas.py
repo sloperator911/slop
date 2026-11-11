@@ -1,6 +1,7 @@
-from typing import Annotated, Any
+import re
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from pydantic import BaseModel, Field, HttpUrl, StringConstraints, field_validator
 
 NonEmptyString = Annotated[
     str, StringConstraints(strict=True, strip_whitespace=True, min_length=1)
@@ -44,3 +45,28 @@ class JobPostBody(BaseModel):
     schedule: NonEmptyString
     requirements: TrimmedString = ""
     description: TrimmedString = ""
+
+
+class ApplicationBody(BaseModel):
+    cv_url: NonEmptyString = Field(alias="cvUrl")
+    message: Annotated[
+        str, StringConstraints(strict=True, strip_whitespace=True, min_length=10, max_length=300)
+    ]
+
+    @field_validator("cv_url")
+    @classmethod
+    def valid_cv_url(cls, value: str) -> str:
+        if re.fullmatch(r"/files/[1-9][0-9]*", value):
+            if int(value.rsplit("/", 1)[1]) >= 2**63:
+                raise ValueError("Invalid file id")
+        else:
+            HttpUrl(value)
+        return value
+
+
+class ApplicationCreateBody(ApplicationBody):
+    job_post_id: int = Field(alias="jobPostId", strict=True, gt=0, lt=2**63)
+
+
+class ApplicationUpdateBody(ApplicationBody):
+    status: Literal["Отправлен", "Просмотрен", "Интервью", "Отказ"]

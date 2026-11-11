@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import auth, files, job_posts, notes
+from . import applications, auth, files, job_posts, notes
 from .db import Base, SessionLocal, engine
 from .errors import ApiError, json_response, unauthorized, validation_error
 from .seed import seed_jobs
@@ -49,6 +49,7 @@ app.include_router(auth.router)
 app.include_router(notes.router)
 app.include_router(files.router)
 app.include_router(job_posts.router)
+app.include_router(applications.router)
 
 # Permissive CORS so a Flutter *web* build can call the API during the labs.
 app.add_middleware(
