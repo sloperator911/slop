@@ -14,6 +14,7 @@ class ApplicationsModel extends ChangeNotifier {
   List<Application> _applications = const [];
   String? _errorMessage;
   bool _isSubmitting = false;
+  bool _disposed = false;
 
   ApplicationsStatus get status => _status;
   List<Application> get applications => List.unmodifiable(_applications);
@@ -26,6 +27,7 @@ class ApplicationsModel extends ChangeNotifier {
     notifyListeners();
 
     final result = await _repository.getApplications();
+    if (_disposed) return;
 
     switch (result) {
       case Ok(value: final applications):
@@ -53,6 +55,7 @@ class ApplicationsModel extends ChangeNotifier {
       cvName: cvName,
       message: message,
     );
+    if (_disposed) return false;
 
     _isSubmitting = false;
 
@@ -67,5 +70,11 @@ class ApplicationsModel extends ChangeNotifier {
         notifyListeners();
         return false;
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

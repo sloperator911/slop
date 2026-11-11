@@ -1,3 +1,4 @@
+import 'package:blowjobboard/models/auth_model.dart';
 import 'package:blowjobboard/screens/application_form.dart';
 import 'package:blowjobboard/screens/auth.dart';
 import 'package:blowjobboard/screens/jobdetails.dart';
@@ -7,8 +8,15 @@ import 'package:blowjobboard/screens/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-final router = GoRouter(
-  initialLocation: '/login',
+GoRouter createRouter(AuthModel auth) => GoRouter(
+  initialLocation: auth.isAuthenticated ? '/jobs' : '/login',
+  refreshListenable: auth,
+  redirect: (context, state) {
+    final atLogin = state.uri.path == '/login';
+    if (!auth.isAuthenticated && !atLogin) return '/login';
+    if (auth.isAuthenticated && atLogin) return '/jobs';
+    return null;
+  },
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
     StatefulShellRoute.indexedStack(

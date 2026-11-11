@@ -13,6 +13,7 @@ class JobsModel extends ChangeNotifier {
   JobsStatus _status = JobsStatus.loading;
   List<JobPost> _jobs = const [];
   String? _errorMessage;
+  bool _disposed = false;
 
   JobsStatus get status => _status;
   List<JobPost> get jobs => List.unmodifiable(_jobs);
@@ -31,6 +32,7 @@ class JobsModel extends ChangeNotifier {
     notifyListeners();
 
     final result = await _repository.getJobs();
+    if (_disposed) return;
 
     switch (result) {
       case Ok(value: final jobs):
@@ -42,5 +44,11 @@ class JobsModel extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:blowjobboard/models/applications_model.dart';
+import 'package:blowjobboard/models/auth_model.dart';
 import 'package:blowjobboard/models/jobs_model.dart';
 import 'package:blowjobboard/models/network_settings_model.dart';
 import 'package:flutter/material.dart';
@@ -11,22 +12,38 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final networkSettings = context.watch<NetworkSettingsModel>();
+    final auth = context.watch<AuthModel>();
+    final user = auth.user;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Card(
+        Card(
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Алексей',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Text('alex@example.com'),
+                if (user != null) ...[
+                  Text(
+                    user.name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(user.email),
+                ],
+                if (auth.isLoadingProfile)
+                  const Center(child: CircularProgressIndicator()),
+                if (auth.errorMessage != null) ...[
+                  Text(auth.errorMessage!),
+                  TextButton(
+                    onPressed: auth.isLoadingProfile ? null : auth.loadProfile,
+                    child: const Text('Повторить'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -68,7 +85,7 @@ class ProfilePage extends StatelessWidget {
             );
 
             if (confirmed == true && context.mounted) {
-              context.go('/login');
+              await auth.logout();
             }
           },
           child: const Text('Выйти'),

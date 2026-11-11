@@ -1,5 +1,6 @@
+import 'package:blowjobboard/models/auth_model.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,9 +11,23 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final formKey = GlobalKey<FormState>();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final nameController = TextEditingController();
+  bool isRegistering = false;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    nameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthModel>();
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -28,7 +43,27 @@ class _LoginPageState extends State<LoginPage> {
                 key: formKey,
                 child: Column(
                   children: [
+                    if (isRegistering) ...[
+                      TextFormField(
+                        controller: nameController,
+                        enabled: !auth.isSubmitting,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Имя',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Введите имя';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     TextFormField(
+                      controller: emailController,
+                      enabled: !auth.isSubmitting,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
                         labelText: 'E-mail',
@@ -43,6 +78,8 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
+                      controller: passwordController,
+                      enabled: !auth.isSubmitting,
                       obscureText: true,
                       decoration: const InputDecoration(
                         labelText: 'Пароль',
@@ -56,13 +93,50 @@ class _LoginPageState extends State<LoginPage> {
                       },
                     ),
                     const SizedBox(height: 16),
+                    if (auth.errorMessage != null) ...[
+                      Text(
+                        auth.errorMessage!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     FilledButton(
-                      onPressed: () {
-                        if (formKey.currentState!.validate()) {
-                          context.go('/jobs');
-                        }
-                      },
-                      child: const Text('Войти'),
+                      onPressed: auth.isSubmitting
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+
+                              await auth.authenticate(
+                                emailController.text.trim(),
+                                passwordController.text,
+                                name: isRegistering
+                                    ? nameController.text.trim()
+                                    : null,
+                              );
+                            },
+                      child: Text(
+                        auth.isSubmitting
+                            ? 'Отправка...'
+                            : isRegistering
+                            ? 'Зарегистрироваться'
+                            : 'Войти',
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: auth.isSubmitting
+                          ? null
+                          : () {
+                              formKey.currentState!.reset();
+                              passwordController.clear();
+                              setState(() => isRegistering = !isRegistering);
+                            },
+                      child: Text(
+                        isRegistering
+                            ? 'Уже есть аккаунт? Войти'
+                            : 'Создать аккаунт',
+                      ),
                     ),
                   ],
                 ),
