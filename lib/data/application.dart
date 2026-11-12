@@ -5,6 +5,9 @@ class Application {
   final String cvUrl;
   final String message;
   final String status;
+  final String jobTitle;
+  final String company;
+  final bool jobDeleted;
 
   const Application({
     required this.id,
@@ -13,6 +16,9 @@ class Application {
     required this.cvUrl,
     required this.message,
     required this.status,
+    required this.jobTitle,
+    required this.company,
+    required this.jobDeleted,
   });
 
   factory Application.fromJson(Map<String, dynamic> json) => Application(
@@ -22,6 +28,9 @@ class Application {
     cvUrl: json['cvUrl'] as String,
     message: json['message'] as String,
     status: json['status'] as String,
+    jobTitle: json['jobTitle'] as String,
+    company: json['company'] as String,
+    jobDeleted: json['jobDeleted'] as bool,
   );
 
   Map<String, dynamic> toJson() => {

@@ -1,4 +1,6 @@
+import 'package:blowjobboard/data/job_repository.dart';
 import 'package:blowjobboard/models/auth_model.dart';
+import 'package:blowjobboard/models/job_details_model.dart';
 import 'package:blowjobboard/screens/application_form.dart';
 import 'package:blowjobboard/screens/auth.dart';
 import 'package:blowjobboard/screens/jobdetails.dart';
@@ -7,6 +9,7 @@ import 'package:blowjobboard/screens/my_applications.dart';
 import 'package:blowjobboard/screens/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 GoRouter createRouter(AuthModel auth) => GoRouter(
   initialLocation: auth.isAuthenticated ? '/jobs' : '/login',
@@ -36,14 +39,24 @@ GoRouter createRouter(AuthModel auth) => GoRouter(
               routes: [
                 GoRoute(
                   path: ':id',
-                  builder: (context, state) => JobDetails(
-                    jobId: int.tryParse(state.pathParameters['id']!) ?? -1,
+                  builder: (context, state) => ChangeNotifierProvider(
+                    key: ValueKey(state.pathParameters['id']),
+                    create: (context) => JobDetailsModel(
+                      context.read<JobRepository>(),
+                      int.tryParse(state.pathParameters['id']!) ?? -1,
+                    )..loadJob(),
+                    child: const JobDetails(),
                   ),
                   routes: [
                     GoRoute(
                       path: 'apply',
-                      builder: (context, state) => ApplicationForm(
-                        jobId: int.tryParse(state.pathParameters['id']!) ?? -1,
+                      builder: (context, state) => ChangeNotifierProvider(
+                        key: ValueKey(state.pathParameters['id']),
+                        create: (context) => JobDetailsModel(
+                          context.read<JobRepository>(),
+                          int.tryParse(state.pathParameters['id']!) ?? -1,
+                        )..loadJob(),
+                        child: const ApplicationForm(),
                       ),
                     ),
                   ],

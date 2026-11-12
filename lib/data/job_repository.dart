@@ -1,11 +1,25 @@
 import 'application.dart';
+import 'job_filter_options.dart';
 import 'job_post.dart';
 import 'result.dart';
 
 abstract interface class JobRepository {
-  Future<Result<List<JobPost>>> getJobs();
+  Future<Result<List<JobPost>>> getJobs({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    String? technology,
+    String? schedule,
+  });
 
-  Future<Result<List<Application>>> getApplications();
+  Future<Result<JobPost>> getJob(int id);
+
+  Future<Result<JobFilterOptions>> getJobFilters();
+
+  Future<Result<List<Application>>> getApplications({
+    int page = 1,
+    int limit = 20,
+  });
 
   Future<Result<Application>> addApplication({
     required int jobPostId,

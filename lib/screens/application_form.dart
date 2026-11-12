@@ -1,5 +1,5 @@
 import 'package:blowjobboard/models/applications_model.dart';
-import 'package:blowjobboard/models/jobs_model.dart';
+import 'package:blowjobboard/models/job_details_model.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -9,9 +9,7 @@ import 'package:text_scroll/text_scroll.dart';
 const cvType = XTypeGroup(label: "PDF", extensions: ["pdf"]);
 
 class ApplicationForm extends StatefulWidget {
-  const ApplicationForm({super.key, required this.jobId});
-
-  final int jobId;
+  const ApplicationForm({super.key});
 
   @override
   State<ApplicationForm> createState() => _ApplicationFormState();
@@ -24,11 +22,29 @@ class _ApplicationFormState extends State<ApplicationForm> {
 
   @override
   Widget build(BuildContext context) {
-    final job = context.watch<JobsModel>().jobById(widget.jobId);
+    final model = context.watch<JobDetailsModel>();
+    final job = model.job;
     final applicationsModel = context.watch<ApplicationsModel>();
 
-    if (job == null) {
-      return const Scaffold(body: Center(child: Text('Вакансия не найдена')));
+    if (model.status != JobDetailsStatus.data || job == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Отклик')),
+        body: Center(
+          child: model.status == JobDetailsStatus.loading
+              ? const CircularProgressIndicator()
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(model.errorMessage ?? 'Вакансия не найдена'),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: model.loadJob,
+                      child: const Text('Повторить'),
+                    ),
+                  ],
+                ),
+        ),
+      );
     }
 
     return Scaffold(

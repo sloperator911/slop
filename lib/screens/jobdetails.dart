@@ -1,4 +1,4 @@
-import 'package:blowjobboard/models/jobs_model.dart';
+import 'package:blowjobboard/models/job_details_model.dart';
 import 'package:blowjobboard/widgets/job_salary.dart';
 import 'package:blowjobboard/widgets/job_sched.dart';
 import 'package:flutter/material.dart';
@@ -7,16 +7,32 @@ import 'package:provider/provider.dart';
 import 'package:text_scroll/text_scroll.dart';
 
 class JobDetails extends StatelessWidget {
-  final int jobId;
-
-  const JobDetails({super.key, required this.jobId});
+  const JobDetails({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final job = context.watch<JobsModel>().jobById(jobId);
+    final model = context.watch<JobDetailsModel>();
+    final job = model.job;
 
-    if (job == null) {
-      return const Scaffold(body: Center(child: Text('Вакансия не найдена')));
+    if (model.status != JobDetailsStatus.data || job == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Вакансия')),
+        body: Center(
+          child: model.status == JobDetailsStatus.loading
+              ? const CircularProgressIndicator()
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(model.errorMessage ?? 'Вакансия не найдена'),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: model.loadJob,
+                      child: const Text('Повторить'),
+                    ),
+                  ],
+                ),
+        ),
+      );
     }
 
     return Scaffold(

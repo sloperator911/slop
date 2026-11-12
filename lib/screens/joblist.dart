@@ -13,88 +13,119 @@ class JobListPage extends StatefulWidget {
 }
 
 class _JobListPageState extends State<JobListPage> {
-  String searchQuery = '';
-  String selectedTechnology = '';
-  String selectedSchedule = '';
+  final searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final jobsModel = context.watch<JobsModel>();
 
-    if (jobsModel.status == JobsStatus.loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (jobsModel.status == JobsStatus.error) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(jobsModel.errorMessage ?? 'Неизвестная ошибка'),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: jobsModel.loadJobs,
-              child: const Text('Повторить'),
-            ),
-          ],
-        ),
-      );
-    }
-
     final jobs = jobsModel.jobs;
-    final technologies = jobs.expand((job) => job.techStack).toSet().toList()
-      ..sort();
-    final schedules = jobs.map((job) => job.schedule).toSet().toList()..sort();
+    final showJobs = jobsModel.status == JobsStatus.data && jobs.isNotEmpty;
 
-    final filteredJobs = jobs.where((job) {
-      final query = searchQuery.trim().toLowerCase();
-      final matchesSearch =
-          job.title.toLowerCase().contains(query) ||
-          job.company.toLowerCase().contains(query);
-      final matchesTechnology =
-          selectedTechnology.isEmpty ||
-          job.techStack.contains(selectedTechnology);
-      final matchesSchedule =
-          selectedSchedule.isEmpty || job.schedule == selectedSchedule;
-
-      return matchesSearch && matchesTechnology && matchesSchedule;
-    });
-
-    return ListView(
+    return ListView.builder(
       padding: const EdgeInsets.all(8),
-      children: [
-        JobFilters(
-          technologies: technologies,
-          schedules: schedules,
-          selectedTechnology: selectedTechnology,
-          selectedSchedule: selectedSchedule,
-          onSearchChanged: (value) {
-            setState(() => searchQuery = value);
-          },
-          onTechnologyChanged: (value) {
-            setState(() => selectedTechnology = value);
-          },
-          onScheduleChanged: (value) {
-            setState(() => selectedSchedule = value);
-          },
-        ),
-        for (final job in filteredJobs)
-          JobCard(
-            title: job.title,
-            company: job.company,
-            salaryRange: job.salaryRange,
-            techStack: job.techStack,
-            schedule: job.schedule,
-            onTap: () {
-              context.push('/jobs/${job.id}');
-            },
-          ),
-        if (filteredJobs.isEmpty)
-          const Padding(
+      itemCount: showJobs ? 1 + jobs.length + (jobsModel.hasMore ? 1 : 0) : 2,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Column(
+            children: [
+              JobFilters(
+                technologies: jobsModel.technologies,
+                schedules: jobsModel.schedules,
+                selectedTechnology: jobsModel.technology,
+                selectedSchedule: jobsModel.schedule,
+                searchController: searchController,
+                onSearchSubmitted: (value) => jobsModel.loadJobs(search: value),
+                onTechnologyChanged: (value) =>
+                    jobsModel.loadJobs(technology: value),
+                onScheduleChanged: (value) =>
+                    jobsModel.loadJobs(schedule: value),
+              ),
+              if (jobsModel.isLoadingFilters) const LinearProgressIndicator(),
+              if (jobsModel.filtersErrorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Text(jobsModel.filtersErrorMessage!),
+                      TextButton(
+                        onPressed: jobsModel.loadFilters,
+                        child: const Text('Повторить загрузку фильтров'),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        }
+        if (jobsModel.status == JobsStatus.loading) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (jobsModel.status == JobsStatus.error) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Text(jobsModel.errorMessage ?? 'Неизвестная ошибка'),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: jobsModel.loadJobs,
+                  child: const Text('Повторить'),
+                ),
+              ],
+            ),
+          );
+        }
+        if (jobs.isEmpty) {
+          return const Padding(
             padding: EdgeInsets.all(16),
             child: Center(child: Text('Вакансий не найдено')),
-          ),
-      ],
+          );
+        }
+        if (index == jobs.length + 1) {
+          final error = jobsModel.loadMoreError;
+          if (error != null) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text(error),
+                  TextButton(
+                    onPressed: jobsModel.retryLoadMore,
+                    child: const Text('Повторить'),
+                  ),
+                ],
+              ),
+            );
+          }
+          jobsModel.loadMore();
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final job = jobs[index - 1];
+        return JobCard(
+          title: job.title,
+          company: job.company,
+          salaryRange: job.salaryRange,
+          techStack: job.techStack,
+          schedule: job.schedule,
+          onTap: () {
+            context.push('/jobs/${job.id}');
+          },
+        );
+      },
     );
   }
 }

@@ -7,7 +7,8 @@ class JobFilters extends StatelessWidget {
     required this.schedules,
     required this.selectedTechnology,
     required this.selectedSchedule,
-    required this.onSearchChanged,
+    required this.searchController,
+    required this.onSearchSubmitted,
     required this.onTechnologyChanged,
     required this.onScheduleChanged,
   });
@@ -16,7 +17,8 @@ class JobFilters extends StatelessWidget {
   final List<String> schedules;
   final String selectedTechnology;
   final String selectedSchedule;
-  final ValueChanged<String> onSearchChanged;
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearchSubmitted;
   final ValueChanged<String> onTechnologyChanged;
   final ValueChanged<String> onScheduleChanged;
 
@@ -28,12 +30,14 @@ class JobFilters extends StatelessWidget {
         child: Column(
           children: [
             TextField(
+              controller: searchController,
+              textInputAction: TextInputAction.search,
               decoration: const InputDecoration(
                 labelText: 'Поиск',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: onSearchChanged,
+              onSubmitted: onSearchSubmitted,
             ),
             const SizedBox(height: 8),
             DropdownButton<String>(
@@ -45,10 +49,7 @@ class JobFilters extends StatelessWidget {
                   child: Text('Все технологии'),
                 ),
                 for (final technology in technologies)
-                  DropdownMenuItem(
-                    value: technology,
-                    child: Text(technology),
-                  ),
+                  DropdownMenuItem(value: technology, child: Text(technology)),
               ],
               onChanged: (value) {
                 if (value != null) onTechnologyChanged(value);
@@ -58,15 +59,9 @@ class JobFilters extends StatelessWidget {
               isExpanded: true,
               value: selectedSchedule,
               items: [
-                const DropdownMenuItem(
-                  value: '',
-                  child: Text('Любой график'),
-                ),
+                const DropdownMenuItem(value: '', child: Text('Любой график')),
                 for (final schedule in schedules)
-                  DropdownMenuItem(
-                    value: schedule,
-                    child: Text(schedule),
-                  ),
+                  DropdownMenuItem(value: schedule, child: Text(schedule)),
               ],
               onChanged: (value) {
                 if (value != null) onScheduleChanged(value);

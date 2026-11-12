@@ -1,14 +1,12 @@
 import 'dart:async';
 
 import 'package:blowjobboard/data/auth_api.dart';
-import 'package:blowjobboard/data/error_simulation.dart';
+import 'package:blowjobboard/data/http_job_repository.dart';
 import 'package:blowjobboard/data/job_repository.dart';
-import 'package:blowjobboard/data/mock_repository.dart';
 import 'package:blowjobboard/data/token_store.dart';
 import 'package:blowjobboard/models/applications_model.dart';
 import 'package:blowjobboard/models/auth_model.dart';
 import 'package:blowjobboard/models/jobs_model.dart';
-import 'package:blowjobboard/models/network_settings_model.dart';
 import 'package:blowjobboard/router.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -42,7 +40,11 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final repository = MockRepository();
+  late final repository = HttpJobRepository(
+    apiBase,
+    const TokenStore(),
+    onUnauthorized: widget.auth.logout,
+  );
   late final router = createRouter(widget.auth);
 
   @override
@@ -56,19 +58,15 @@ class _MyAppState extends State<MyApp> {
     return MultiProvider(
       providers: [
         Provider<JobRepository>.value(value: repository),
-        Provider<ErrorSimulation>.value(value: repository),
         ChangeNotifierProvider(
-          create: (context) =>
-              JobsModel(context.read<JobRepository>())..loadJobs(),
+          create: (context) => JobsModel(context.read<JobRepository>())
+            ..loadJobs()
+            ..loadFilters(),
         ),
         ChangeNotifierProvider(
           create: (context) =>
               ApplicationsModel(context.read<JobRepository>())
                 ..loadApplications(),
-        ),
-        ChangeNotifierProvider(
-          create: (context) =>
-              NetworkSettingsModel(context.read<ErrorSimulation>()),
         ),
       ],
       child: DynamicColorBuilder(
