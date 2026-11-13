@@ -1,3 +1,5 @@
+import 'package:blowjobboard/data/application.dart';
+import 'package:blowjobboard/data/result.dart';
 import 'package:blowjobboard/models/applications_model.dart';
 import 'package:blowjobboard/models/job_details_model.dart';
 import 'package:file_selector/file_selector.dart';
@@ -19,13 +21,121 @@ class _ApplicationFormState extends State<ApplicationForm> {
   final formKey = GlobalKey<FormState>();
   XFile? selectedCv;
   String message = '';
+  int? jobId;
+  late Future<Result<Application?>> existingApplication;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final id = context.read<JobDetailsModel>().jobId;
+    if (jobId == id) return;
+    jobId = id;
+    existingApplication = context.read<ApplicationsModel>().findApplication(id);
+  }
 
   @override
   Widget build(BuildContext context) {
     final model = context.watch<JobDetailsModel>();
-    final job = model.job;
     final applicationsModel = context.watch<ApplicationsModel>();
 
+    return FutureBuilder<Result<Application?>>(
+      future: existingApplication,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done ||
+            !snapshot.hasData) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Отклик')),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        switch (snapshot.data!) {
+          case Ok(value: final application):
+            if (application != null) return _buildApplication(application);
+            return _buildForm(model, applicationsModel);
+          case Err(message: final error):
+            return Scaffold(
+              appBar: AppBar(title: const Text('Отклик')),
+              body: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(error),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () => setState(() {
+                        existingApplication = applicationsModel.findApplication(
+                          jobId!,
+                        );
+                      }),
+                      child: const Text('Повторить'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+        }
+      },
+    );
+  }
+
+  Widget _buildApplication(Application application) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Ваш отклик')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${application.jobTitle} @ ${application.company}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Вы уже откликнулись на эту вакансию'),
+                  if (application.jobDeleted) ...[
+                    const SizedBox(height: 8),
+                    const Text('Вакансия удалена'),
+                  ],
+                  const SizedBox(height: 8),
+                  Text('Статус: ${application.status}'),
+                  const SizedBox(height: 16),
+                  const Text('Сопроводительное письмо'),
+                  const SizedBox(height: 8),
+                  Text(application.message),
+                  const SizedBox(height: 16),
+                  const Row(
+                    children: [
+                      Icon(Icons.attach_file),
+                      SizedBox(width: 8),
+                      Text('CV прикреплён'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => context.go('/applications'),
+            child: const Text('Мои отклики'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForm(
+    JobDetailsModel model,
+    ApplicationsModel applicationsModel,
+  ) {
+    final job = model.job;
     if (model.status != JobDetailsStatus.data || job == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Отклик')),
@@ -52,11 +162,17 @@ class _ApplicationFormState extends State<ApplicationForm> {
         title: Row(
           children: [
             Expanded(
-              child: TextScroll(
-                job.title,
-                mode: TextScrollMode.endless,
-                pauseBetween: Duration(seconds: 1),
-              ),
+              child: !TickerMode.valuesOf(context).enabled
+                  ? Text(
+                      job.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  : TextScroll(
+                      job.title,
+                      mode: TextScrollMode.endless,
+                      pauseBetween: Duration(seconds: 1),
+                    ),
             ),
             const SizedBox(width: 8),
             Text(": Отклик"),
@@ -85,16 +201,18 @@ class _ApplicationFormState extends State<ApplicationForm> {
                     Text("Приложите ваш CV"),
                     SizedBox(height: 8),
                     OutlinedButton(
-                      onPressed: () async {
-                        final file = await openFile(
-                          acceptedTypeGroups: [cvType],
-                        );
-                        if (file == null) return;
+                      onPressed: applicationsModel.isSubmitting
+                          ? null
+                          : () async {
+                              final file = await openFile(
+                                acceptedTypeGroups: [cvType],
+                              );
+                              if (file == null || !mounted) return;
 
-                        setState(() {
-                          selectedCv = file;
-                        });
-                      },
+                              setState(() {
+                                selectedCv = file;
+                              });
+                            },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -113,6 +231,7 @@ class _ApplicationFormState extends State<ApplicationForm> {
                     Text("...и добавьте короткое сообщение работодателю"),
                     SizedBox(height: 16),
                     TextFormField(
+                      enabled: !applicationsModel.isSubmitting,
                       onChanged: (value) {
                         message = value;
                       },
@@ -156,22 +275,21 @@ class _ApplicationFormState extends State<ApplicationForm> {
                               }
 
                               final messenger = ScaffoldMessenger.of(context);
-                              final sent = await applicationsModel
+                              final application = await applicationsModel
                                   .addApplication(
                                     jobPostId: job.id,
-                                    cvName: cv.name,
+                                    cvPath: cv.path,
                                     message: message.trim(),
                                   );
 
                               if (!context.mounted) return;
 
-                              if (sent) {
-                                context.pop();
-                                messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Отклик отправлен'),
-                                  ),
-                                );
+                              if (application != null) {
+                                setState(() {
+                                  existingApplication = Future.value(
+                                    Ok(application),
+                                  );
+                                });
                               } else {
                                 messenger.showSnackBar(
                                   SnackBar(

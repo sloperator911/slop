@@ -40,11 +40,17 @@ class JobDetails extends StatelessWidget {
         title: Row(
           children: [
             Expanded(
-              child: TextScroll(
-                job.title,
-                mode: TextScrollMode.endless,
-                pauseBetween: Duration(seconds: 1),
-              ),
+              child: !TickerMode.valuesOf(context).enabled
+                  ? Text(
+                      job.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  : TextScroll(
+                      job.title,
+                      mode: TextScrollMode.endless,
+                      pauseBetween: Duration(seconds: 1),
+                    ),
             ),
             const SizedBox(width: 8),
             Text(job.company),

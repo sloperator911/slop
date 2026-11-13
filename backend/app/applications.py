@@ -159,6 +159,25 @@ def get_application(
     return json_response(_to_json(application))
 
 
+@router.get("/job-posts/{job_id}/application")
+def get_job_application(
+    job_id: str,
+    user_id: int = Depends(require_auth),
+    db: Session = Depends(get_db),
+):
+    try:
+        parsed_id = int(job_id)
+    except ValueError:
+        raise not_found("Application not found")
+    if not 0 < parsed_id < 2**63:
+        raise not_found("Application not found")
+
+    application = _by_job(db, user_id, parsed_id)
+    if application is None:
+        raise not_found("Application not found")
+    return json_response(_to_json(application))
+
+
 @router.put("/applications/{application_id}")
 def update_application(
     application_id: str,

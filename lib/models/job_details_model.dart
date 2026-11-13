@@ -17,6 +17,7 @@ class JobDetailsModel extends ChangeNotifier {
   bool _disposed = false;
 
   JobDetailsStatus get status => _status;
+  int get jobId => _jobId;
   JobPost? get job => _job;
   String? get errorMessage => _errorMessage;
 

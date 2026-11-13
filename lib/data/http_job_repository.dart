@@ -181,9 +181,87 @@ class HttpJobRepository implements JobRepository {
   }
 
   @override
+  Future<Result<Application?>> getApplicationForJob(int jobPostId) async {
+    try {
+      final token = await tokens.read();
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/job-posts/$jobPostId/application'),
+            headers: _headers(token),
+          )
+          .timeout(_timeout);
+      if (response.statusCode == 401) {
+        return Err(await _sessionDied(token));
+      }
+      if (response.statusCode == 404) return const Ok(null);
+      if (response.statusCode != 200) return Err(apiMessage(response));
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      return Ok(Application.fromJson(data));
+    } on SocketException {
+      return const Err('Нет сети — повторите попытку');
+    } on http.ClientException {
+      return const Err('Нет сети — повторите попытку');
+    } on TimeoutException {
+      return const Err('Сервер не отвечает');
+    } on FormatException {
+      return const Err('Ответ не тот, что обещан');
+    } on TypeError {
+      return const Err('Ответ не тот, что обещан');
+    }
+  }
+
+  @override
+  Future<Result<String>> uploadCv(String path) async {
+    try {
+      final file = await http.MultipartFile.fromPath(
+        'file',
+        path,
+        contentType: http.MediaType('application', 'pdf'),
+      );
+      if (file.length > 5 * 1024 * 1024) {
+        return const Err('CV должен быть не больше 5 МБ');
+      }
+      final token = await tokens.read();
+      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/files'))
+        ..headers['Authorization'] = 'Bearer ${token ?? ''}'
+        ..files.add(file);
+      final response = await request
+          .send()
+          .then(http.Response.fromStream)
+          .timeout(const Duration(seconds: 20));
+      if (response.statusCode == 401) {
+        return Err(await _sessionDied(token));
+      }
+      if (response.statusCode != 201) return Err(apiMessage(response));
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final url = data['url'] as String;
+      if (!RegExp(r'^/files/[1-9][0-9]*$').hasMatch(url)) {
+        return const Err('Ответ не тот, что обещан');
+      }
+      return Ok(url);
+    } on FileSystemException {
+      return const Err('Не удалось прочитать CV — выберите файл снова');
+    } on SocketException {
+      return const Err('Нет сети — повторите попытку');
+    } on http.ClientException {
+      return const Err('Нет сети — повторите попытку');
+    } on TimeoutException {
+      return const Err('Сервер не отвечает');
+    } on FormatException {
+      return const Err('Ответ не тот, что обещан');
+    } on TypeError {
+      return const Err('Ответ не тот, что обещан');
+    }
+  }
+
+  @override
   Future<Result<Application>> addApplication({
     required int jobPostId,
-    required String cvName,
+    required String cvUrl,
     required String message,
   }) async {
     try {
@@ -194,7 +272,7 @@ class HttpJobRepository implements JobRepository {
             headers: _headers(token),
             body: jsonEncode({
               'jobPostId': jobPostId,
-              'cvUrl': cvName,
+              'cvUrl': cvUrl,
               'message': message,
             }),
           )

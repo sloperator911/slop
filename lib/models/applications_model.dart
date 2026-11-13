@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:blowjobboard/data/application.dart';
 import 'package:blowjobboard/data/job_repository.dart';
 import 'package:blowjobboard/data/result.dart';
@@ -21,6 +23,7 @@ class ApplicationsModel extends ChangeNotifier {
   bool _hasMore = false;
   bool _isLoadingMore = false;
   String? _loadMoreError;
+  bool _isRefreshing = false;
 
   ApplicationsStatus get status => _status;
   List<Application> get applications => List.unmodifiable(_applications);
@@ -30,12 +33,18 @@ class ApplicationsModel extends ChangeNotifier {
   bool get isLoadingMore => _isLoadingMore;
   String? get loadMoreError => _loadMoreError;
 
-  Future<void> loadApplications() async {
+  Future<void> loadApplications({bool refresh = false}) async {
+    if (refresh && _isRefreshing) return;
+
+    final keepData = refresh && _status == ApplicationsStatus.data;
     final request = ++_request;
-    _status = ApplicationsStatus.loading;
+    _isRefreshing = refresh;
+    if (!keepData) _status = ApplicationsStatus.loading;
     _errorMessage = null;
-    _page = 0;
-    _hasMore = false;
+    if (!keepData) {
+      _page = 0;
+      _hasMore = false;
+    }
     _isLoadingMore = false;
     _loadMoreError = null;
     notifyListeners();
@@ -43,6 +52,7 @@ class ApplicationsModel extends ChangeNotifier {
     final result = await _repository.getApplications(limit: _limit);
     if (_disposed || request != _request) return;
 
+    _isRefreshing = false;
     switch (result) {
       case Ok(value: final applications):
         _applications = List.of(applications);
@@ -51,14 +61,17 @@ class ApplicationsModel extends ChangeNotifier {
         _status = ApplicationsStatus.data;
       case Err(message: final message):
         _errorMessage = message;
-        _status = ApplicationsStatus.error;
+        if (!keepData) _status = ApplicationsStatus.error;
     }
 
     notifyListeners();
   }
 
   Future<void> loadMore() async {
-    if (_status != ApplicationsStatus.data || _isLoadingMore || !_hasMore) {
+    if (_status != ApplicationsStatus.data ||
+        _isLoadingMore ||
+        _isRefreshing ||
+        !_hasMore) {
       return;
     }
 
@@ -74,7 +87,11 @@ class ApplicationsModel extends ChangeNotifier {
     _isLoadingMore = false;
     switch (result) {
       case Ok(value: final applications):
-        _applications = [..._applications, ...applications];
+        final byId = {
+          for (final application in [..._applications, ...applications])
+            application.id: application,
+        };
+        _applications = byId.values.toList();
         _page++;
         _hasMore = applications.length == _limit;
       case Err(message: final message):
@@ -89,34 +106,62 @@ class ApplicationsModel extends ChangeNotifier {
     return pending;
   }
 
-  Future<bool> addApplication({
+  Future<Result<Application?>> findApplication(int jobPostId) =>
+      _repository.getApplicationForJob(jobPostId);
+
+  Future<Application?> addApplication({
     required int jobPostId,
-    required String cvName,
+    required String cvPath,
     required String message,
   }) async {
+    if (_isSubmitting) return null;
+
     _isSubmitting = true;
     _errorMessage = null;
     notifyListeners();
 
+    final upload = await _repository.uploadCv(cvPath);
+    if (_disposed) return null;
+
+    final String cvUrl;
+    switch (upload) {
+      case Ok(value: final url):
+        cvUrl = url;
+      case Err(message: final message):
+        _isSubmitting = false;
+        _errorMessage = message;
+        notifyListeners();
+        return null;
+    }
+
     final result = await _repository.addApplication(
       jobPostId: jobPostId,
-      cvName: cvName,
+      cvUrl: cvUrl,
       message: message,
     );
-    if (_disposed) return false;
+    if (_disposed) return null;
 
     _isSubmitting = false;
 
     switch (result) {
       case Ok(value: final application):
-        _applications = [..._applications, application];
+        _request++;
+        _isRefreshing = false;
+        _isLoadingMore = false;
+        _loadMoreError = null;
+        _applications = [
+          application,
+          ..._applications.where((item) => item.id != application.id),
+        ];
+        _applications.sort((a, b) => b.id.compareTo(a.id));
         _status = ApplicationsStatus.data;
         notifyListeners();
-        return true;
+        unawaited(loadApplications(refresh: true));
+        return application;
       case Err(message: final message):
         _errorMessage = message;
         notifyListeners();
-        return false;
+        return null;
     }
   }
 

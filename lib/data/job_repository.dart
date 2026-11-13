@@ -21,9 +21,13 @@ abstract interface class JobRepository {
     int limit = 20,
   });
 
+  Future<Result<String>> uploadCv(String path);
+
+  Future<Result<Application?>> getApplicationForJob(int jobPostId);
+
   Future<Result<Application>> addApplication({
     required int jobPostId,
-    required String cvName,
+    required String cvUrl,
     required String message,
   });
 }

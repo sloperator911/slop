@@ -10,33 +10,60 @@ class MyApplicationsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final applicationsModel = context.watch<ApplicationsModel>();
 
+    return RefreshIndicator(
+      onRefresh: () async {
+        await applicationsModel.loadApplications(refresh: true);
+        if (!context.mounted) return;
+        final error = applicationsModel.errorMessage;
+        if (error != null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(error)));
+        }
+      },
+      child: _buildList(context, applicationsModel),
+    );
+  }
+
+  Widget _buildList(BuildContext context, ApplicationsModel applicationsModel) {
     if (applicationsModel.status == ApplicationsStatus.loading) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ],
+      );
     }
 
     if (applicationsModel.status == ApplicationsStatus.error) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(applicationsModel.errorMessage ?? 'Неизвестная ошибка'),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: applicationsModel.loadApplications,
-              child: const Text('Повторить'),
-            ),
-          ],
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(applicationsModel.errorMessage ?? 'Неизвестная ошибка'),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: applicationsModel.loadApplications,
+            child: const Text('Повторить'),
+          ),
+        ],
       );
     }
 
     final applications = applicationsModel.applications;
 
     if (applications.isEmpty) {
-      return const Center(child: Text('Откликов пока нет'));
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: const [Center(child: Text('Откликов пока нет'))],
+      );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(8),
       itemCount: applications.length + (applicationsModel.hasMore ? 1 : 0),
       itemBuilder: (context, index) {
